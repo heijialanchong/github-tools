@@ -1,0 +1,50 @@
+# >>> github-tools 自动管理 <<<
+
+# 基础排除
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 配置文件（包含敏感信息，不上传）
+.env
+*.local
+github账号.txt
+github-recovery-codes.txt
+加速器.txt
+projects.json
+
+# Jupyter
+.ipynb_checkpoints/
+
+# 缓存和日志
+*.log
+*.cache
+
+# 用户自定义排除 (来自 projects.json)
+github账号.txt
+github-recovery-codes.txt
+projects.json
+.env
+
+# <<< github-tools 自动管理 >>>
