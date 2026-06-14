@@ -33,6 +33,13 @@ import json
 from typing import List
 from urllib import request, error
 
+# Windows 中文环境修复 emoji 编码问题
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 # ============================================================
 # 常量
 # ============================================================
