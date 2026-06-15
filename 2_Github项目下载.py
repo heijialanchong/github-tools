@@ -27,6 +27,7 @@ if sys.platform == "win32":
         pass
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+DOWNLOADS_DIR = os.path.join(SCRIPT_DIR, "repos")  # 下载的仓库统一放这里
 
 
 # ============================================================
@@ -175,7 +176,7 @@ def process_repo(proj, github, index, total):
     """处理单个仓库"""
     username, token, _, proxy = github
     repo_name = proj["repo"]
-    target_dir = proj["path"]
+    target_dir = os.path.join(DOWNLOADS_DIR, repo_name)
     branch = proj.get("branch", "main")
     depth = proj.get("depth", 0)
 
@@ -268,7 +269,7 @@ def main():
     results = []
     for i, proj in enumerate(repos):
         if args.dry_run:
-            target = proj["path"]
+            target = os.path.join(DOWNLOADS_DIR, proj["repo"])
             git_dir = os.path.join(target, ".git")
             action = "拉取最新" if os.path.isdir(git_dir) else "克隆"
             print(f"\n  [{i + 1}/{len(repos)}] 🔍 {proj['repo']} → {action} → {target}")
