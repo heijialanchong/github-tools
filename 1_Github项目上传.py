@@ -33,6 +33,8 @@ import json
 from typing import List
 from urllib import request, error
 
+from config import UPLOAD_REPOS
+
 # Windows 中文环境修复 emoji 编码问题
 if sys.platform == "win32":
     try:
@@ -421,19 +423,6 @@ def load_config(config_path: str) -> dict:
         print("  勾选权限: repo (全部)")
         sys.exit(1)
 
-    projects = config.get("projects", [])
-    if not projects:
-        print("✗ 配置文件中没有项目，请在 projects 列表中添加")
-        sys.exit(1)
-
-    for i, proj in enumerate(projects):
-        if not proj.get("path"):
-            print(f"✗ 项目 [{i}] 缺少 path")
-            sys.exit(1)
-        if not proj.get("repo"):
-            print(f"✗ 项目 [{i}] 缺少 repo")
-            sys.exit(1)
-
     return config
 
 
@@ -475,17 +464,31 @@ def main():
     # 加载配置
     config = load_config(config_path)
     github = config["github"]
-    all_projects = config["projects"]
+    all_projects = config.get("projects", [])
+
+    # 按 config.py 的 UPLOAD_REPOS 筛选
+    repo_set = set(UPLOAD_REPOS)
+    matched = [p for p in all_projects if p.get("repo") in repo_set]
+    missing = repo_set - {p.get("repo") for p in all_projects}
+    if missing:
+        print(f"⚠ projects.json 中未找到: {', '.join(missing)}")
+
+    if not UPLOAD_REPOS:
+        print("✗ config.py 中 UPLOAD_REPOS 为空，请先添加要上传的仓库名")
+        sys.exit(1)
+    if not matched:
+        print("✗ 没有匹配的项目可以上传")
+        sys.exit(1)
 
     # 筛选项目
     if args.project is not None:
-        if 0 <= args.project < len(all_projects):
-            projects = [all_projects[args.project]]
+        if 0 <= args.project < len(matched):
+            projects = [matched[args.project]]
         else:
-            print(f"✗ 项目索引 {args.project} 超出范围 (共 {len(all_projects)} 个)")
+            print(f"✗ 项目索引 {args.project} 超出范围 (共 {len(matched)} 个)")
             sys.exit(1)
     else:
-        projects = all_projects
+        projects = matched
 
     print("=" * 60)
     print("  📤 GitHub 批量上传工具")

@@ -18,19 +18,6 @@
                 "projects.json",
                 ".env"
             ]
-        },
-        {
-            "path": "E:/another-project",
-            "repo": "another-project",
-            "description": "另一个项目",
-            "private": true,
-            "branch": "main",
-            "commit_message": "自动提交",
-            "exclude": [
-                ".env",
-                "node_modules/",
-                "*.log"
-            ]
         }
     ]
 }

@@ -1,18 +1,26 @@
-# 🚀 GitHub Tools — 项目批量上传管理工具
+# 🚀 GitHub Tools — 项目批量上传/下载管理工具
 
-一键将本地多个项目批量上传到 GitHub，仓库不存在则自动创建，已存在则更新推送。
+一键将本地多个项目批量上传到 GitHub，或从 GitHub 批量下载仓库到本地。
 
 ---
 
 ## ✨ 功能
 
-- 📦 **批量上传** — 一个配置文件管理多个项目的上传
+**上传 (`1_Github项目上传.py`)**
+- 📦 **批量上传** — 一个配置文件管理多个项目
 - 🔍 **智能检测** — 自动检查 GitHub 仓库是否存在
 - 🆕 **自动创建** — 仓库不存在则通过 API 自动创建
-- 🔄 **增量更新** — 仓库已存在则在原有基础上 push 新 commit
-- 🙈 **排除列表** — 每个项目可自定义不上传的文件（自动写入 `.gitignore`）
-- 🛡️ **安全保护** — 自动将配置文件 `projects.json` 加入排除，防止 Token 泄露
-- 🏃 **Dry-run** — 预检查模式，只看结果不实际推送
+- 🔄 **增量更新** — 已存在则 push 新 commit
+- 🙈 **排除列表** — 自定义不上传的文件（自动写入 `.gitignore`）
+- 🛡️ **安全保护** — 自动将 `projects.json` 加入排除，防止 Token 泄露
+- 🏃 **Dry-run** — 预检查模式
+
+**下载 (`2_Github仓库下载.py`)**
+- 📥 **批量下载** — 批量克隆/拉取 GitHub 仓库
+- 🔄 **智能判断** — 本地已有则 pull 更新，没有则 clone
+- 🌿 **分支选择** — 支持指定分支
+- ⚡ **浅克隆** — `--depth 1` 快速下载
+- 🌐 **代理支持** — 配置文件中直接写代理地址
 
 ---
 
@@ -49,7 +57,8 @@ cp projects.example.json projects.json
     "github": {
         "username": "你的GitHub用户名",
         "token": "ghp_xxxxxxxxxxxxxxxxxxxx",
-        "email": "your-email@example.com"
+        "email": "your-email@example.com",
+        "proxy": "http://127.0.0.1:7897"
     },
     "projects": [
         {
@@ -90,6 +99,7 @@ python 1_Github项目上传.py
 | `username` | ✅ | GitHub **用户名**（英文，非昵称） |
 | `token` | ✅ | GitHub Personal Access Token (classic) |
 | `email` | ✅ | 用于 git commit 的邮箱 |
+| `proxy` | ❌ | HTTP 代理地址，如 `http://127.0.0.1:7897` |
 
 ### 项目配置
 
@@ -130,6 +140,49 @@ python 1_Github项目上传.py --project 0
 # 预检查模式
 python 1_Github项目上传.py --dry-run
 ```
+
+---
+
+## 📥 下载脚本
+
+### 配置项目
+
+和上传共用 `projects.json`，每个项目加 `branch` / `depth`：
+
+```json
+"projects": [
+    {
+        "path": "E:/my-project",
+        "repo": "my-project",
+        "branch": "main",
+        "depth": 1
+    }
+]
+```
+
+### 运行
+
+```bash
+# 预览
+python 2_Github仓库下载.py --dry-run
+
+# 下载所有
+python 2_Github仓库下载.py
+
+# 只下载第 0 个
+python 2_Github仓库下载.py --project 0
+
+# 覆盖分支 + 浅克隆
+python 2_Github仓库下载.py --branch dev --depth 1
+```
+
+| 参数 | 简写 | 说明 |
+|------|------|------|
+| `--config` | `-c` | 配置文件路径 |
+| `--project` | `-p` | 只下载指定索引的项目 |
+| `--branch` | `-b` | 覆盖所有项目的分支 |
+| `--depth` | `-d` | 浅克隆深度 |
+| `--dry-run` | — | 仅预览 |
 
 ---
 
