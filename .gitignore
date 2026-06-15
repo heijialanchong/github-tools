@@ -46,5 +46,6 @@ github账号.txt
 github-recovery-codes.txt
 projects.json
 .env
+repos
 
 # <<< github-tools 自动管理 >>>
