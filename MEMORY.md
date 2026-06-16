@@ -1,0 +1,1 @@
+- [修改日志策略](CLAUDE_CHANGELOG.md) — 每次代码修改都记录到 CLAUDE_CHANGELOG.md

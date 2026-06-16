@@ -286,9 +286,31 @@ def add_commit_push(project_dir: str, branch: str, message: str):
     if result.returncode != 0:
         return False
 
-    # 提交
+    # 生成详细描述（变更文件列表 + 统计）
+    detail_lines = []
+    stat_result = subprocess.run(
+        ["git", "diff", "--staged", "--stat"],
+        capture_output=True, text=True, cwd=project_dir
+    )
+    if stat_result.stdout.strip():
+        detail_lines.append(stat_result.stdout.strip())
+
+    name_result = subprocess.run(
+        ["git", "diff", "--staged", "--name-status"],
+        capture_output=True, text=True, cwd=project_dir
+    )
+    if name_result.stdout.strip():
+        detail_lines.append("\n文件变更明细:")
+        detail_lines.append(name_result.stdout.strip())
+
+    # 提交（包含详细描述）
     print(f"  💾 提交: \"{message}\"")
-    result = run(["git", "commit", "-m", message], cwd=project_dir)
+    detail_msg = "\n".join(detail_lines) if detail_lines else ""
+    if detail_msg:
+        print(f"  📝 详细描述: {len(detail_lines)} 行变更摘要")
+        result = run(["git", "commit", "-m", message, "-m", detail_msg], cwd=project_dir)
+    else:
+        result = run(["git", "commit", "-m", message], cwd=project_dir)
 
     if result.returncode != 0:
         if "nothing to commit" in result.stderr or "nothing to commit" in result.stdout:
