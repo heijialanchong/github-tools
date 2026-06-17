@@ -16,6 +16,14 @@ import re
 import subprocess
 import argparse
 
+# 从项目 config.py 读取代理配置
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    from config import HTTP_PROXY, HTTPS_PROXY
+except ImportError:
+    HTTP_PROXY = ""
+    HTTPS_PROXY = ""
+
 if sys.platform == "win32":
     try:
         sys.stdout.reconfigure(encoding="utf-8")
@@ -23,6 +31,18 @@ if sys.platform == "win32":
         pass
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def apply_git_proxy():
+    """将 config.py 的代理设置同步到 git global config"""
+    if HTTP_PROXY:
+        subprocess.run(["git", "config", "--global", "http.proxy", HTTP_PROXY], check=False)
+        subprocess.run(["git", "config", "--global", "https.proxy", HTTPS_PROXY or HTTP_PROXY], check=False)
+        print(f"  🔗 代理已设置: {HTTP_PROXY}")
+    else:
+        subprocess.run(["git", "config", "--global", "--unset", "http.proxy"], check=False)
+        subprocess.run(["git", "config", "--global", "--unset", "https.proxy"], check=False)
+        print("  🔗 代理已关闭（直连）")
 
 
 def parse_repo(target):
@@ -94,6 +114,9 @@ def main():
     if args.depth > 0:
         print(f"  📏 --depth {args.depth}")
     print("=" * 60)
+
+    # 同步 config.py 代理配置到 git
+    apply_git_proxy()
 
     cmd = ["git", "clone"]
     if args.branch:

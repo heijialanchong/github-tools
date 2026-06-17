@@ -47,5 +47,6 @@ github-recovery-codes.txt
 projects.json
 .env
 repos
+.claude
 
 # <<< github-tools 自动管理 >>>
