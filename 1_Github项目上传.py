@@ -286,6 +286,17 @@ def add_commit_push(project_dir: str, branch: str, message: str):
     if result.returncode != 0:
         return False
 
+    # 检查是否有暂存的变更
+    diff_check = subprocess.run(
+        ["git", "diff", "--staged", "--quiet"],
+        capture_output=True, cwd=project_dir
+    )
+    if diff_check.returncode == 0:
+        # 没有需要提交的更改
+        print(f"  💾 提交: \"{message}\"")
+        print(f"  ℹ 没有需要提交的更改，跳过提交")
+        return True
+
     # 生成详细描述（变更文件列表 + 统计）
     detail_lines = []
     stat_result = subprocess.run(
@@ -313,11 +324,11 @@ def add_commit_push(project_dir: str, branch: str, message: str):
         result = run(["git", "commit", "-m", message], cwd=project_dir)
 
     if result.returncode != 0:
-        if "nothing to commit" in result.stderr or "nothing to commit" in result.stdout:
-            print("  ℹ 没有需要提交的更改")
-            # 没有更改也算成功，但要确保有分支可以推送
-        else:
-            return False
+        # 理论上不会走到这里（已提前检查），保留作为兜底
+        if "nothing to commit" in (result.stderr + result.stdout):
+            print("  ℹ 没有需要提交的更改，跳过提交")
+            return True
+        return False
 
     # 确保在正确的分支上
     current = subprocess.run(
