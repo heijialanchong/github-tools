@@ -50,3 +50,30 @@
   - 无变更 → 跳过提交 → `"no_changes"` → 显示 `无需更新，已是最新`
   - 失败 → `None` → 显示 `失败`
   - 同时修复了 `replace_all` 误改其他函数 `return False` 的问题
+
+### 新增 GitHub 仓库文件夹删除工具
+- **文件**: `4_Github删除仓库文件夹.py`（新建）
+- **说明**: 通过 git 操作删除 GitHub 仓库中的指定文件夹
+- **功能**:
+  - 支持命令行参数和交互式两种使用方式
+  - 自动拉取/克隆仓库 → `git rm -r` 删除文件夹 → 提交 → 推送
+  - 支持 `--repo`（仓库名）、`--folder`（文件夹路径）、`--branch`（分支）、`--message`（自定义提交信息）
+  - 支持 `--dry-run` 预览模式
+  - 推送冲突时自动 `pull --rebase` 重试
+  - 与现有项目的 config.py、projects.json 配置体系兼容
+- **原理**: GitHub API 没有直接删除文件夹的接口，通过 git 将文件夹从版本控制中移除后推送实现
+
+### 新增 GitHub 仓库删除工具
+- **文件**: `5_Github删除仓库.py`（新建）
+- **说明**: 通过 GitHub API（DELETE /repos/{owner}/{repo}）直接删除整个仓库
+- **功能**:
+  - 删除前展示仓库详细信息（类型、Stars、Forks、创建时间等）
+  - 二次确认机制：需输入仓库名 + 输入 YES 才能执行
+  - `--yes` 跳过确认（适合脚本调用）
+  - 支持 proxy 代理（复用 config.py 配置）
+- **注意**: 删除不可逆，Token 需勾选 delete_repo 权限
+- **修复**: `api_request()` — DELETE 返回 204 No Content（空 body）时 `json.loads("")` 报 JSON 解析错误，改为空响应时返回 `{}`
+
+### 配置代理
+- **文件**: `config.py`
+- **修改**: HTTP_PROXY / HTTPS_PROXY 设为肥猫云代理 `http://127.0.0.1:7892`
