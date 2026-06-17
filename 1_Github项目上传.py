@@ -284,7 +284,7 @@ def add_commit_push(project_dir: str, branch: str, message: str):
     print(f"\n  📋 添加文件...")
     result = run(["git", "add", "."], cwd=project_dir)
     if result.returncode != 0:
-        return False
+        return None
 
     # 检查是否有暂存的变更
     diff_check = subprocess.run(
@@ -295,7 +295,7 @@ def add_commit_push(project_dir: str, branch: str, message: str):
         # 没有需要提交的更改
         print(f"  💾 提交: \"{message}\"")
         print(f"  ℹ 没有需要提交的更改，跳过提交")
-        return True
+        return "no_changes"
 
     # 生成详细描述（变更文件列表 + 统计）
     detail_lines = []
@@ -327,8 +327,8 @@ def add_commit_push(project_dir: str, branch: str, message: str):
         # 理论上不会走到这里（已提前检查），保留作为兜底
         if "nothing to commit" in (result.stderr + result.stdout):
             print("  ℹ 没有需要提交的更改，跳过提交")
-            return True
-        return False
+            return "no_changes"
+        return None
 
     # 确保在正确的分支上
     current = subprocess.run(
@@ -359,12 +359,12 @@ def add_commit_push(project_dir: str, branch: str, message: str):
         pull_result = run(["git", "pull", "origin", branch, "--rebase"], cwd=project_dir)
         if pull_result.returncode != 0:
             print("  ✗ 合并失败，请手动处理冲突")
-            return False
+            return None
         result = run(["git", "push", "-u", "origin", branch], cwd=project_dir)
         if result.returncode != 0:
-            return False
+            return None
 
-    return True
+    return "pushed"
 
 
 # ============================================================
@@ -425,14 +425,17 @@ def process_project(proj: dict, github: dict, index: int, total: int):
     setup_remote(path, remote_url)
 
     # 7. 添加 → 提交 → 推送
-    success = add_commit_push(path, branch, commit_message)
+    result = add_commit_push(path, branch, commit_message)
 
-    if success:
+    if result == "pushed":
         print(f"\n  ✅ [{index + 1}/{total}] {repo_name} - {action}成功!")
+        return True
+    elif result == "no_changes":
+        print(f"\n  ✅ [{index + 1}/{total}] {repo_name} - 无需更新，已是最新")
+        return True
     else:
         print(f"\n  ❌ [{index + 1}/{total}] {repo_name} - 失败")
-
-    return success
+        return False
 
 
 def load_config(config_path: str) -> dict:
