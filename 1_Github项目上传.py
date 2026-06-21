@@ -33,7 +33,7 @@ from datetime import datetime, timezone, timedelta
 from typing import List
 from urllib import request, error
 
-from config import UPLOAD_REPOS
+from config import UPLOAD_REPOS, HTTP_PROXY, HTTPS_PROXY
 
 # Windows 中文环境修复 emoji 编码问题
 if sys.platform == "win32":
@@ -110,6 +110,20 @@ def write_upload_log(repo_name: str):
     with open(log_path, "a", encoding="utf-8") as f:
         f.write(f"上传成功 | UTC: {now_utc} | 北京时间(UTC+8): {now_bjt}\n")
     print(f"  📝 日志已写入: {log_path}")
+
+def sync_git_proxy():
+    """根据 config.py 的代理配置同步 Git 全局代理"""
+    if HTTP_PROXY:
+        subprocess.run(
+            ["git", "config", "--global", "http.proxy", HTTP_PROXY],
+            capture_output=True
+        )
+    if HTTPS_PROXY:
+        subprocess.run(
+            ["git", "config", "--global", "https.proxy", HTTPS_PROXY],
+            capture_output=True
+        )
+    print(f"  🔗 Git 代理已同步: {HTTP_PROXY}")
 
 def run(cmd: List[str], cwd: str = None) -> subprocess.CompletedProcess:
     """运行命令，实时打印输出"""
@@ -552,6 +566,9 @@ def main():
     if args.dry_run:
         print("  ⚠ DRY RUN 模式 - 不会实际推送")
     print("=" * 60)
+
+    # 同步 Git 代理配置
+    sync_git_proxy()
 
     # 逐个处理项目
     results = []
