@@ -423,6 +423,12 @@ def process_project(proj: dict, github: dict, index: int, total: int):
     print(f"  本地路径: {path}")
     print(f"{'=' * 60}")
 
+    # 0. 确认是否上传
+    confirm = input(f"  ⚠ 确认上传? (输入 YES 确认): ").strip()
+    if confirm != "YES":
+        print(f"  ⏭ 已跳过: {repo_name}")
+        return False
+
     # 1. 验证路径
     if not os.path.isdir(path):
         print(f"  ✗ 错误: 路径不存在 - {path}")
