@@ -4,7 +4,21 @@
 
 ---
 
-## 2026-06-21 20:30:00
+## 2026-06-21 09:09
+
+### Git 代理自动同步（修复 push/pull 端口问题）
+- **文件**: `1_Github项目上传.py`
+- **修改**: 新增 `sync_git_proxy()` 函数，在 `main()` 开始时调用
+- **问题**: `config.py` 中已配置 `HTTP_PROXY` / `HTTPS_PROXY`（肥猫云 `127.0.0.1:7892`），但 git 全局配置没有同步设置 `http.proxy` 和 `https.proxy`，导致 git push/pull 不走代理而连接失败
+- **具体改动**:
+  - 从 `config` 导入 `HTTP_PROXY` 和 `HTTPS_PROXY`
+  - 新增 `sync_git_proxy()` 函数 — 将代理配置写入 git 全局配置（`git config --global http.proxy` / `https.proxy`）
+  - `main()` 入口处调用 `sync_git_proxy()`，确保每次运行前 git 代理与 config.py 保持一致
+- **效果**: git push/pull 走代理，不再因端口不通而失败
+
+---
+
+## 2026-06-21 09:00:00
 
 ### 上传成功写入日志
 - **文件**: `1_Github项目上传.py`
