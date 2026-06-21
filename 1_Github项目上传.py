@@ -25,11 +25,11 @@
     python 上传.py --config my_config.json  # 指定配置文件
     python 上传.py --project 0              # 只上传第 0 个项目
 """
-
 import subprocess
 import sys
 import os
 import json
+from datetime import datetime, timezone, timedelta
 from typing import List
 from urllib import request, error
 
@@ -89,10 +89,27 @@ projects.json
 
 GITHUB_API = "https://api.github.com"
 
+# 日志目录（脚本所在目录下的 logs 文件夹）
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+LOGS_DIR = os.path.join(SCRIPT_DIR, "logs")
+
+# 北京时区 UTC+8
+BJT = timezone(timedelta(hours=8))
+
 
 # ============================================================
 # 工具函数
 # ============================================================
+
+def write_upload_log(repo_name: str):
+    """上传成功后写入日志文件（UTC + 北京时间）"""
+    os.makedirs(LOGS_DIR, exist_ok=True)
+    log_path = os.path.join(LOGS_DIR, f"{repo_name}.log")
+    now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    now_bjt = datetime.now(BJT).strftime("%Y-%m-%d %H:%M:%S")
+    with open(log_path, "a", encoding="utf-8") as f:
+        f.write(f"上传成功 | UTC: {now_utc} | 北京时间(UTC+8): {now_bjt}\n")
+    print(f"  📝 日志已写入: {log_path}")
 
 def run(cmd: List[str], cwd: str = None) -> subprocess.CompletedProcess:
     """运行命令，实时打印输出"""
@@ -429,6 +446,7 @@ def process_project(proj: dict, github: dict, index: int, total: int):
 
     if result == "pushed":
         print(f"\n  ✅ [{index + 1}/{total}] {repo_name} - {action}成功!")
+        write_upload_log(repo_name)
         return True
     elif result == "no_changes":
         print(f"\n  ✅ [{index + 1}/{total}] {repo_name} - 无需更新，已是最新")

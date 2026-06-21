@@ -4,6 +4,16 @@
 
 ---
 
+## 2026-06-21 20:30:00
+
+### 上传成功写入日志
+- **文件**: `1_Github项目上传.py`
+- **修改**: `process_project()` — 推送成功后调用 `write_upload_log()` 写入日志
+- **新增**: `write_upload_log()` 函数 — 在 `logs/` 目录下创建 `<repo_name>.log`，追加写入 UTC 和北京时间(UTC+8) 两个时间戳
+- **新增常量**: `LOGS_DIR`（`E:\github\logs`）、`BJT`（UTC+8 时区）
+
+---
+
 ## 2026-06-16
 
 ### 初始化日志系统
