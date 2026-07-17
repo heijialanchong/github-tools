@@ -311,9 +311,9 @@ def setup_remote(project_dir: str, remote_url: str):
 
 def add_commit_push(project_dir: str, branch: str, message: str):
     """添加文件 → 提交 → 推送"""
-    # 添加所有文件
+    # 添加所有文件（-A 确保暂存删除操作，实现与远程完全同步）
     print(f"\n  📋 添加文件...")
-    result = run(["git", "add", "."], cwd=project_dir)
+    result = run(["git", "add", "-A"], cwd=project_dir)
     if result.returncode != 0:
         return None
 

@@ -19,5 +19,5 @@ UPLOAD_REPOS = [
 
 # 要下载的仓库名列表
 DOWNLOAD_REPOS = [
-    "github-tools",
+    "polymarket-simple-order",
 ]
