@@ -37,7 +37,7 @@ DOWNLOADS_DIR = os.path.join(SCRIPT_DIR, "repos")  # 下载的仓库统一放这
 def run(cmd, cwd=None):
     """运行命令，实时打印输出"""
     print(f"    ➤ {' '.join(cmd)}")
-    result = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd)
+    result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', cwd=cwd)
     if result.returncode != 0:
         print(f"    ✗ {result.stderr.strip()}")
     elif result.stdout.strip():

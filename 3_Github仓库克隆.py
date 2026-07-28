@@ -82,13 +82,12 @@ def main():
         target_dir = target_dir_input or None
 
         # 构造一个简易 args 对象
-        class Args:
-            pass
-        args = Args()
-        args.repo = repo
-        args.branch = branch
-        args.depth = depth
-        args.dir = target_dir
+        args = argparse.Namespace(
+            repo=repo,
+            branch=branch,
+            depth=depth,
+            dir=target_dir
+        )
     else:
         parser = argparse.ArgumentParser(description="克隆 GitHub 仓库到本地")
         parser.add_argument("repo", help="仓库地址 (URL 或 owner/repo)")

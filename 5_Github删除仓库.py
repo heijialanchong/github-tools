@@ -190,7 +190,7 @@ def main():
             sys.exit(1)
 
     # 加载配置
-    username, token, email = load_github_config()
+    username, token, _email = load_github_config()
     setup_proxy()
 
     print("=" * 60)

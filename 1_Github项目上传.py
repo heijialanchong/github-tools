@@ -30,7 +30,6 @@ import sys
 import os
 import json
 from datetime import datetime, timezone, timedelta
-from typing import List
 from urllib import request, error
 
 from config import UPLOAD_REPOS, HTTP_PROXY, HTTPS_PROXY
@@ -125,7 +124,7 @@ def sync_git_proxy():
         )
     print(f"  🔗 Git 代理已同步: {HTTP_PROXY}")
 
-def run(cmd: List[str], cwd: str = None) -> subprocess.CompletedProcess:
+def run(cmd: list, cwd: str = None) -> subprocess.CompletedProcess:
     """运行命令，实时打印输出"""
     print(f"    ➤ {' '.join(cmd)}")
     result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', cwd=cwd)
@@ -239,7 +238,7 @@ def init_git(project_dir: str):
     return True
 
 
-def sync_gitignore(project_dir: str, exclude: List[str]):
+def sync_gitignore(project_dir: str, exclude: list):
     """根据配置同步 .gitignore：基础模板 + 用户自定义排除列表
 
     每次运行都会读取现有 .gitignore，只更新由脚本管理的部分（标记块内），
@@ -378,15 +377,14 @@ def add_commit_push(project_dir: str, branch: str, message: str):
     detail_msg = "\n".join(detail_lines) if detail_lines else ""
     if detail_msg:
         print(f"  📝 详细描述: {len(detail_lines)} 行变更摘要")
-        import os as _os
-        tmp_path = _os.path.join(project_dir, ".git", "COMMIT_MSG_TMP")
+        tmp_path = os.path.join(project_dir, ".git", "COMMIT_MSG_TMP")
         try:
             with open(tmp_path, "w", encoding="utf-8") as f:
                 f.write(message + "\n\n" + detail_msg)
             result = run(["git", "commit", "-F", tmp_path], cwd=project_dir)
         finally:
-            if _os.path.exists(tmp_path):
-                _os.remove(tmp_path)
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
     else:
         result = run(["git", "commit", "-m", message], cwd=project_dir)
 
