@@ -317,6 +317,33 @@ def add_commit_push(project_dir: str, branch: str, message: str):
     if result.returncode != 0:
         return None
 
+    # 检测并排除超大文件（GitHub 单文件限制 100MB）
+    GITHUB_SIZE_LIMIT_MB = 100
+    large_files = []
+    ls_files = subprocess.run(
+        ["git", "diff", "--staged", "--name-only", "-z"],
+        capture_output=True, cwd=project_dir
+    )
+    if ls_files.stdout:
+        staged = [f for f in ls_files.stdout.decode("utf-8", errors="replace").split("\0") if f]
+        for f in staged:
+            fpath = os.path.join(project_dir, f)
+            if os.path.isfile(fpath):
+                size_mb = os.path.getsize(fpath) / (1024 * 1024)
+                if size_mb > GITHUB_SIZE_LIMIT_MB:
+                    large_files.append((f, size_mb))
+        if large_files:
+            print(f"  ⚠ 检测到 {len(large_files)} 个文件超过 GitHub 限制 ({GITHUB_SIZE_LIMIT_MB}MB)，已跳过:")
+            for f, size_mb in large_files:
+                print(f"    ⛔ {f} ({size_mb:.1f} MB)")
+            # 从暂存区移除大文件
+            unstage_result = subprocess.run(
+                ["git", "reset", "--"] + [f for f, _ in large_files],
+                capture_output=True, text=True, cwd=project_dir
+            )
+            if unstage_result.returncode != 0:
+                print(f"    ✗ 取消暂存失败: {unstage_result.stderr.strip()}")
+
     # 检查是否有暂存的变更
     diff_check = subprocess.run(
         ["git", "diff", "--staged", "--quiet"],
@@ -346,11 +373,20 @@ def add_commit_push(project_dir: str, branch: str, message: str):
         detail_lines.append(name_result.stdout.strip())
 
     # 提交（包含详细描述）
+    # 使用临时文件传递提交消息，避免 Windows 命令行长度限制（WinError 206）
     print(f"  💾 提交: \"{message}\"")
     detail_msg = "\n".join(detail_lines) if detail_lines else ""
     if detail_msg:
         print(f"  📝 详细描述: {len(detail_lines)} 行变更摘要")
-        result = run(["git", "commit", "-m", message, "-m", detail_msg], cwd=project_dir)
+        import os as _os
+        tmp_path = _os.path.join(project_dir, ".git", "COMMIT_MSG_TMP")
+        try:
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                f.write(message + "\n\n" + detail_msg)
+            result = run(["git", "commit", "-F", tmp_path], cwd=project_dir)
+        finally:
+            if _os.path.exists(tmp_path):
+                _os.remove(tmp_path)
     else:
         result = run(["git", "commit", "-m", message], cwd=project_dir)
 
