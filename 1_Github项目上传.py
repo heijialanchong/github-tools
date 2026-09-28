@@ -31,6 +31,7 @@ import os
 import json
 from datetime import datetime, timezone, timedelta
 from urllib import request, error
+from urllib.parse import quote
 
 from config import UPLOAD_REPOS, HTTP_PROXY, HTTPS_PROXY
 
@@ -226,15 +227,24 @@ def configure_git_user(username: str, email: str):
 
 
 def init_git(project_dir: str):
-    """初始化 Git 仓库"""
+    """初始化 Git 仓库（不存在或损坏时重新初始化）"""
+    # 用 git 自己判断是否为有效仓库，而不是只看 .git 目录是否存在：
+    # .git 可能是空目录/损坏，此时 git 会报 "not a git repository"
+    result = subprocess.run(
+        ["git", "rev-parse", "--is-inside-work-tree"],
+        capture_output=True, text=True, cwd=project_dir
+    )
+    if result.returncode == 0:
+        print("  ℹ Git 仓库已存在")
+        return True
+
     git_dir = os.path.join(project_dir, ".git")
     if os.path.exists(git_dir):
-        print("  ℹ Git 仓库已存在")
-    else:
-        result = run(["git", "init"], cwd=project_dir)
-        if result.returncode != 0:
-            return False
-        print("  ✓ Git 初始化完成")
+        print("  ⚠ .git 目录无效（空/损坏），将重新初始化")
+    result = run(["git", "init"], cwd=project_dir)
+    if result.returncode != 0:
+        return False
+    print("  ✓ Git 初始化完成")
     return True
 
 
@@ -459,7 +469,7 @@ def process_project(proj: dict, github: dict, index: int, total: int):
 
     # 0. 确认是否上传
     confirm = input(f"  ⚠ 确认上传? (输入 YES 确认): ").strip()
-    if confirm != "YES":
+    if confirm.upper() != "YES":
         print(f"  ⏭ 已跳过: {repo_name}")
         return False
 

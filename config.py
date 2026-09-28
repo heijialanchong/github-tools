@@ -17,7 +17,10 @@ UPLOAD_REPOS = [
     "github-tools",
 ]
 
-# 要下载的仓库名列表
-DOWNLOAD_REPOS = [
-    "polymarket-simple-order",
-]
+# 要下载的仓库
+#   仓库名 -> 上传时间(UTC)，格式 "YYYY-MM-DD HH:MM:SS"，对应 logs/<仓库名>.log 里的 UTC 时间
+#   留空 "" = 下载最新版；填了时间 = 下载对应的历史版本（自动匹配最接近的提交）
+DOWNLOAD_REPOS = {
+    "godot-micro-era": "",
+    # "godot-micro-era": "2026-09-28 07:05:45",
+}

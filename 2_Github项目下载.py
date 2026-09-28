@@ -1,9 +1,10 @@
 """
 从 GitHub 批量下载仓库到本地
 
-仓库名配置在 config.py 的 DOWNLOAD_REPOS 列表中。
-详细参数（路径、分支等）从 projects.json 读取。
-下载位置: projects.json 中配置的 path 字段
+仓库配置在 config.py 的 DOWNLOAD_REPOS 字典中：
+    {仓库名: 上传时间(UTC)}，时间留空 "" = 下载最新版，填时间 = 下载对应历史版本。
+详细参数（分支、浅克隆深度等）从 projects.json 读取。
+下载位置: 脚本目录下的 repos/<仓库名>/
 
 用法:
     python 2_Github项目下载.py                  # 下载全部
@@ -14,8 +15,11 @@
 import os
 import sys
 import json
+import re
 import subprocess
 import argparse
+from datetime import datetime, timezone
+from urllib import request, error
 
 from config import DOWNLOAD_REPOS
 
@@ -87,6 +91,97 @@ def configure_git_user(username, email):
     ).stdout.strip()
     if not mail:
         run(["git", "config", "--global", "user.email", email])
+
+
+# ============================================================
+# 按上传时间下载历史版本
+# ============================================================
+
+def parse_utc_time(s: str):
+    """解析日志中的 UTC 时间。
+
+    支持直接填 "2026-09-28 07:05:45"，或整行复制日志：
+    "上传成功 | UTC: 2026-09-28 07:05:45 | 北京时间(UTC+8): 2026-09-28 15:05:45"
+    注意：匹配的是 UTC 时间，不是北京时间。
+    """
+    s = s.strip()
+    if "UTC:" in s:
+        s = s.split("UTC:", 1)[1]
+    m = re.search(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}", s)
+    if not m:
+        raise ValueError("未找到时间，格式应为 YYYY-MM-DD HH:MM:SS")
+    return datetime.strptime(m.group(0), "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+
+
+def api_request(token: str, endpoint: str):
+    """调用 GitHub API，返回 (status_code, body)"""
+    req = request.Request(f"https://api.github.com{endpoint}")
+    req.add_header("Authorization", f"token {token}")
+    req.add_header("Accept", "application/vnd.github.v3+json")
+    try:
+        with request.urlopen(req) as resp:
+            return resp.status, json.loads(resp.read().decode())
+    except error.HTTPError as e:
+        return e.code, json.loads(e.read().decode())
+
+
+def find_commit_by_time(username: str, token: str, repo_name: str, target_time):
+    """查找与目标时间最接近的提交，返回 dict(sha, date, message, delta_seconds) 或 None"""
+    all_commits = []
+    for page in range(1, 4):  # 最多拉取 300 条提交
+        status, commits = api_request(
+            token, f"/repos/{username}/{repo_name}/commits?per_page=100&page={page}"
+        )
+        if status != 200 or not isinstance(commits, list) or not commits:
+            break
+        all_commits.extend(commits)
+        if len(commits) < 100:
+            break
+
+    if not all_commits:
+        print("  ✗ 仓库没有可用的提交记录")
+        return None
+
+    best = None
+    for c in all_commits:
+        date_str = c["commit"]["committer"]["date"].replace("Z", "+00:00")
+        try:
+            dt = datetime.fromisoformat(date_str)
+        except ValueError:
+            continue
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        delta = abs((dt - target_time).total_seconds())
+        if best is None or delta < best[0]:
+            best = (delta, c["sha"], dt, c["commit"]["message"].split("\n")[0])
+    if best is None:
+        print("  ✗ 无法解析提交时间")
+        return None
+    return {"sha": best[1], "date": best[2], "message": best[3], "delta_seconds": best[0]}
+
+
+def checkout_version(repo_name, branch, target_dir, proxy, commit_info):
+    """在已克隆的仓库中检出指定提交"""
+    # 浅克隆需要先补齐完整历史
+    shallow = subprocess.run(
+        ["git", "rev-parse", "--is-shallow-repository"],
+        capture_output=True, text=True, cwd=target_dir
+    ).stdout.strip()
+    if shallow == "true":
+        print("  ℹ 检测到浅克隆，拉取完整历史 ...")
+        r = run(["git", "fetch", "--unshallow", "origin"], cwd=target_dir)
+        if r.returncode != 0:
+            r = run(["git", "fetch", "origin", branch], cwd=target_dir)
+    else:
+        run(["git", "fetch", "origin", branch], cwd=target_dir)
+
+    sha = commit_info["sha"]
+    r = run(["git", "checkout", sha], cwd=target_dir)
+    if r.returncode != 0:
+        print(f"  ✗ 检出提交失败: {sha}")
+        return False
+    print(f"  ✓ 已检出到 {commit_info['date'].strftime('%Y-%m-%d %H:%M:%S')} UTC (提交 {sha[:8]}, detached HEAD)")
+    return True
 
 
 # ============================================================
@@ -172,21 +267,38 @@ def pull_repo(repo_name, branch, target_dir, proxy):
 # 项目处理
 # ============================================================
 
-def process_repo(proj, github, index, total):
-    """处理单个仓库"""
+def process_repo(proj, github, index, total, target_time=None):
+    """处理单个仓库（可选按上传时间检出历史版本）"""
     username, token, _, proxy = github
     repo_name = proj["repo"]
     target_dir = os.path.join(DOWNLOADS_DIR, repo_name)
     branch = proj.get("branch", "main")
     depth = proj.get("depth", 0)
 
+    # 按时间下载需要完整历史，禁用浅克隆
+    if target_time is not None:
+        depth = 0
+
     print(f"\n{'=' * 60}")
     print(f"  [{index + 1}/{total}] {username}/{repo_name}")
     print(f"  分支: {branch}")
     if depth > 0:
         print(f"  浅克隆深度: {depth}")
+    if target_time is not None:
+        print(f"  目标上传时间: {target_time.strftime('%Y-%m-%d %H:%M:%S')} UTC")
     print(f"  本地: {target_dir}")
     print(f"{'=' * 60}")
+
+    # 先通过 GitHub API 定位目标提交
+    commit_info = None
+    if target_time is not None:
+        commit_info = find_commit_by_time(username, token, repo_name, target_time)
+        if commit_info is None:
+            return False
+        print(f"  🎯 匹配提交: {commit_info['sha'][:8]}  {commit_info['date'].strftime('%Y-%m-%d %H:%M:%S')} UTC (偏差 {commit_info['delta_seconds']:.0f}s)")
+        print(f"     {commit_info['message'][:60]}")
+        if commit_info["delta_seconds"] > 600:
+            print("  ⚠ 匹配偏差较大（>10 分钟），请确认填的是 UTC 时间而不是北京时间")
 
     git_dir = os.path.join(target_dir, ".git")
 
@@ -202,6 +314,10 @@ def process_repo(proj, github, index, total):
         action = "克隆"
         success = clone_repo(username, token, repo_name, branch, depth, target_dir, proxy)
 
+    # 检出指定历史版本
+    if success and target_time is not None:
+        success = checkout_version(repo_name, branch, target_dir, proxy, commit_info)
+
     if success:
         print(f"\n  ✅ [{index + 1}/{total}] {repo_name} - {action}成功!")
     else:
@@ -215,29 +331,35 @@ def process_repo(proj, github, index, total):
 # ============================================================
 
 def main():
-    parser = argparse.ArgumentParser(description="从 GitHub 批量下载仓库到本地")
+    parser = argparse.ArgumentParser(description="从 GitHub 批量下载仓库到本地（支持按上传时间下载历史版本）")
     parser.add_argument("--project", "-p", type=int, default=None,
                         help="只下载指定索引的仓库 (从 0 开始)")
     parser.add_argument("--dry-run", action="store_true",
                         help="仅预览，不实际执行")
     args = parser.parse_args()
 
-    # 1. 检查 config.py
-    if not DOWNLOAD_REPOS:
+    # 1. 检查 config.py（兼容列表/字典两种写法：字典值 = 上传时间，留空 = 最新版）
+    if isinstance(DOWNLOAD_REPOS, list):
+        repos_map = {name: "" for name in DOWNLOAD_REPOS}
+    else:
+        repos_map = dict(DOWNLOAD_REPOS)
+    if not repos_map:
         print("✗ config.py 中 DOWNLOAD_REPOS 为空，请先添加要下载的仓库名")
         sys.exit(1)
 
     # 2. 加载 projects.json
     github, all_projects = load_config()
 
-    # 3. 按 DOWNLOAD_REPOS 筛选匹配的项目
-    repo_set = set(DOWNLOAD_REPOS)
+    # 3. 按 DOWNLOAD_REPOS 筛选匹配的项目（未在 projects.json 中的用默认配置）
+    repo_set = set(repos_map)
     matched = [p for p in all_projects if p.get("repo") in repo_set]
-    missing = repo_set - {p.get("repo") for p in all_projects}
-    if missing:
-        print(f"⚠ projects.json 中未找到: {', '.join(missing)}")
+    present = {p.get("repo") for p in all_projects}
+    missing = repo_set - present
+    for name in sorted(missing):
+        print(f"⚠ projects.json 中未找到 {name}，使用默认配置 (main 分支)")
+        matched.append({"repo": name, "branch": "main", "depth": 0})
     if not matched:
-        print("✗ 没有匹配的项目可以下载")
+        print("✗ 没有可下载的仓库")
         sys.exit(1)
 
     # 4. 筛选
@@ -268,14 +390,26 @@ def main():
     # 7. 逐个处理
     results = []
     for i, proj in enumerate(repos):
+        # 解析该仓库的上传时间（若有，留空则下载最新版）
+        time_str = repos_map.get(proj["repo"], "").strip()
+        target_time = None
+        if time_str:
+            try:
+                target_time = parse_utc_time(time_str)
+            except ValueError:
+                print(f"✗ 上传时间格式错误: {time_str}（应为 YYYY-MM-DD HH:MM:SS）")
+                results.append(False)
+                continue
+
         if args.dry_run:
             target = os.path.join(DOWNLOADS_DIR, proj["repo"])
             git_dir = os.path.join(target, ".git")
             action = "拉取最新" if os.path.isdir(git_dir) else "克隆"
-            print(f"\n  [{i + 1}/{len(repos)}] 🔍 {proj['repo']} → {action} → {target}")
+            extra = f" → 检出 {target_time.strftime('%Y-%m-%d %H:%M:%S')}" if target_time else ""
+            print(f"\n  [{i + 1}/{len(repos)}] 🔍 {proj['repo']} → {action}{extra} → {target}")
             results.append(True)
         else:
-            ok = process_repo(proj, github, i, len(repos))
+            ok = process_repo(proj, github, i, len(repos), target_time)
             results.append(ok)
 
     # 8. 报告
