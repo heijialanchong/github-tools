@@ -21,7 +21,9 @@ import argparse
 from datetime import datetime, timezone
 from urllib import request, error
 
-from config import DOWNLOAD_REPOS
+from config import CONFIG
+
+DOWNLOAD_REPOS = CONFIG["download_repos"]
 
 # Windows 中文环境修复 emoji 编码问题
 if sys.platform == "win32":

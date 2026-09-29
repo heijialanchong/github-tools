@@ -1,12 +1,10 @@
+每次修改后，将你修改的内容，写入 CLAUDE_CHANGELOG.md 里
+方便我以后观察改了什么内容
+
 E:\github-tools\config.py
 1.加一个上传时间的参数，
 # 要下载的仓库名列表
 DOWNLOAD_REPOS = [
     "godot-micro-era",
 ]
-比如下载的时候，我根据
-E:\github-tools\logs\godot-micro-era.log
-仓库对应的log,
-上传成功 | UTC: 2026-09-28 07:05:45 | 北京时间(UTC+8): 2026-09-28 15:05:45
-比如 我填写 2026-09-28 07:05:45
-就下载对应的上传的这个版本
+加一个参数，

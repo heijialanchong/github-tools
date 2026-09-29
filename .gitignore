@@ -37,8 +37,7 @@ projects.json
 # Jupyter
 .ipynb_checkpoints/
 
-# 缓存和日志
-*.log
+# 缓存
 *.cache
 
 # 用户自定义排除 (来自 projects.json)

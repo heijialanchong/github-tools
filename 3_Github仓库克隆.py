@@ -19,7 +19,9 @@ import argparse
 # 从项目 config.py 读取代理配置
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
-    from config import HTTP_PROXY, HTTPS_PROXY
+    from config import CONFIG
+    HTTP_PROXY = CONFIG["proxy"]["http"]
+    HTTPS_PROXY = CONFIG["proxy"]["https"]
 except ImportError:
     HTTP_PROXY = ""
     HTTPS_PROXY = ""

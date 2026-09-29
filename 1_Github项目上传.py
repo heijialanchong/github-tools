@@ -33,7 +33,12 @@ from datetime import datetime, timezone, timedelta
 from urllib import request, error
 from urllib.parse import quote
 
-from config import UPLOAD_REPOS, HTTP_PROXY, HTTPS_PROXY
+from config import CONFIG
+
+HTTP_PROXY = CONFIG["proxy"]["http"]
+HTTPS_PROXY = CONFIG["proxy"]["https"]
+UPLOAD_REPOS = CONFIG["upload"]["repos"]
+CHANGE_DESCRIPTION = CONFIG["upload"]["change_description"]
 
 # Windows 中文环境修复 emoji 编码问题
 if sys.platform == "win32":
@@ -82,8 +87,7 @@ projects.json
 # Jupyter
 .ipynb_checkpoints/
 
-# 缓存和日志
-*.log
+# 缓存
 *.cache
 """
 
@@ -101,14 +105,18 @@ BJT = timezone(timedelta(hours=8))
 # 工具函数
 # ============================================================
 
-def write_upload_log(repo_name: str):
-    """上传成功后写入日志文件（UTC + 北京时间）"""
+def write_upload_log(repo_name: str, description: str = ""):
+    """写入上传日志（UTC + 北京时间 + 本次修改描述）
+
+    在 commit 之前调用，使日志随本次代码一起提交到仓库。
+    """
     os.makedirs(LOGS_DIR, exist_ok=True)
     log_path = os.path.join(LOGS_DIR, f"{repo_name}.log")
     now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     now_bjt = datetime.now(BJT).strftime("%Y-%m-%d %H:%M:%S")
+    desc = description.strip() or "（未填写）"
     with open(log_path, "a", encoding="utf-8") as f:
-        f.write(f"上传成功 | UTC: {now_utc} | 北京时间(UTC+8): {now_bjt}\n")
+        f.write(f"上传成功 | UTC: {now_utc} | 北京时间(UTC+8): {now_bjt} | 修改: {desc}\n")
     print(f"  📝 日志已写入: {log_path}")
 
 def sync_git_proxy():
@@ -318,8 +326,12 @@ def setup_remote(project_dir: str, remote_url: str):
         print(f"  ✓ 远程地址已设置: {remote_url}")
 
 
-def add_commit_push(project_dir: str, branch: str, message: str):
+def add_commit_push(project_dir: str, branch: str, message: str, description: str = ""):
     """添加文件 → 提交 → 推送"""
+    # 本次修改描述优先作为 commit 标题，留空则用 projects.json 的 commit_message
+    if description.strip():
+        message = description.strip()
+
     # 添加所有文件（-A 确保暂存删除操作，实现与远程完全同步）
     print(f"\n  📋 添加文件...")
     result = run(["git", "add", "-A"], cwd=project_dir)
@@ -454,6 +466,7 @@ def process_project(proj: dict, github: dict, index: int, total: int):
     private = proj.get("private", False)
     branch = proj.get("branch", "main")
     commit_message = proj.get("commit_message", "自动更新")
+    change_desc = CHANGE_DESCRIPTION  # 本次修改描述（config.py，可留空）
     exclude = proj.get("exclude", [])
     if "projects.json" not in exclude:
         exclude.append("projects.json")  # 自动加上，防止配置文件泄露
@@ -505,12 +518,14 @@ def process_project(proj: dict, github: dict, index: int, total: int):
     # 6. 设置远程仓库
     setup_remote(path, remote_url)
 
-    # 7. 添加 → 提交 → 推送
-    result = add_commit_push(path, branch, commit_message)
+    # 7. 写入上传日志（在 commit 之前，使日志随本次代码一起提交到仓库）
+    write_upload_log(repo_name, change_desc)
+
+    # 8. 添加 → 提交 → 推送
+    result = add_commit_push(path, branch, commit_message, change_desc)
 
     if result == "pushed":
         print(f"\n  ✅ [{index + 1}/{total}] {repo_name} - {action}成功!")
-        write_upload_log(repo_name)
         return True
     elif result == "no_changes":
         print(f"\n  ✅ [{index + 1}/{total}] {repo_name} - 无需更新，已是最新")

@@ -22,7 +22,10 @@ import subprocess
 import argparse
 import shutil
 
-from config import HTTP_PROXY, HTTPS_PROXY
+from config import CONFIG
+
+HTTP_PROXY = CONFIG["proxy"]["http"]
+HTTPS_PROXY = CONFIG["proxy"]["https"]
 
 # Windows 中文环境修复 emoji 编码问题
 if sys.platform == "win32":
