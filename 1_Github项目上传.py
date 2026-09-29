@@ -29,6 +29,7 @@ import subprocess
 import sys
 import os
 import json
+import re
 from datetime import datetime, timezone, timedelta
 from urllib import request, error
 from urllib.parse import quote
@@ -39,6 +40,7 @@ HTTP_PROXY = CONFIG["proxy"]["http"]
 HTTPS_PROXY = CONFIG["proxy"]["https"]
 UPLOAD_REPOS = CONFIG["upload"]["repos"]
 CHANGE_DESCRIPTION = CONFIG["upload"]["change_description"]
+REFERENCE_DIR = CONFIG["upload"].get("reference_dir", "reference")
 
 # Windows 中文环境修复 emoji 编码问题
 if sys.platform == "win32":
@@ -105,19 +107,71 @@ BJT = timezone(timedelta(hours=8))
 # 工具函数
 # ============================================================
 
-def write_upload_log(repo_name: str, description: str = ""):
+def write_upload_log(repo_name: str, description: str = "", now_utc=None):
     """写入上传日志（UTC + 北京时间 + 本次修改描述）
 
     在 commit 之前调用，使日志随本次代码一起提交到仓库。
+    now_utc 传入本次上传时间戳（与参考图命名保持一致），为空则取当前时间。
     """
     os.makedirs(LOGS_DIR, exist_ok=True)
     log_path = os.path.join(LOGS_DIR, f"{repo_name}.log")
-    now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-    now_bjt = datetime.now(BJT).strftime("%Y-%m-%d %H:%M:%S")
+    if now_utc is None:
+        now_utc = datetime.now(timezone.utc)
+    utc_str = now_utc.strftime("%Y-%m-%d %H:%M:%S")
+    bjt_str = now_utc.astimezone(BJT).strftime("%Y-%m-%d %H:%M:%S")
     desc = description.strip() or "（未填写）"
     with open(log_path, "a", encoding="utf-8") as f:
-        f.write(f"上传成功 | UTC: {now_utc} | 北京时间(UTC+8): {now_bjt} | 修改: {desc}\n")
+        f.write(f"上传成功 | UTC: {utc_str} | 北京时间(UTC+8): {bjt_str} | 修改: {desc}\n")
     print(f"  📝 日志已写入: {log_path}")
+
+IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp")
+# 已经是时间戳命名的图片（YYYY-MM-DD_HHMMSS，可带 _N 序号）不再处理
+TIMESTAMP_NAME_RE = re.compile(r"^\d{4}-\d{2}-\d{2}_\d{6}(_\d+)?$")
+
+
+def rename_reference_image(project_dir: str, now_utc) -> None:
+    """把参考图文件夹里的图重命名成 UTC 时间戳（先改名，再提交）
+
+    扫描 <仓库>/<REFERENCE_DIR>/ 下所有图片：
+    - 名字已是 YYYY-MM-DD_HHMMSS 格式（含 _N 序号）→ 不动，累积保留
+    - 其余图片（可多张）→ 依次改名为 <YYYY-MM-DD_HHMMSS>.<ext>（同一秒多张自动加 _1/_2）
+    没放图则跳过，不报错。
+    """
+    ref_dir = os.path.join(project_dir, REFERENCE_DIR)
+    if not os.path.isdir(ref_dir):
+        print(f"  ℹ 未找到参考图文件夹 {REFERENCE_DIR}/，跳过")
+        return
+
+    # 收集待改名的图片：扩展名是图片、且名字还不是时间戳
+    to_rename = []
+    for name in sorted(os.listdir(ref_dir)):
+        full = os.path.join(ref_dir, name)
+        if not os.path.isfile(full):
+            continue
+        base, ext = os.path.splitext(name)
+        if ext.lower() not in IMAGE_EXTS:
+            continue
+        if TIMESTAMP_NAME_RE.match(base):
+            continue
+        to_rename.append(full)
+
+    if not to_rename:
+        print(f"  ℹ 本次没有参考图（{REFERENCE_DIR}/ 下没有待命名的图片），跳过")
+        return
+
+    ts = now_utc.strftime("%Y-%m-%d_%H%M%S")
+    n = 0
+    for src in to_rename:
+        ext = os.path.splitext(src)[1]
+        # 找不冲突的目标名：ts.png → ts_1.png → ts_2.png ...
+        while True:
+            dst_name = f"{ts}{ext}" if n == 0 else f"{ts}_{n}{ext}"
+            n += 1
+            if not os.path.exists(os.path.join(ref_dir, dst_name)):
+                break
+        os.rename(src, os.path.join(ref_dir, dst_name))
+        print(f"  🖼  参考图已命名: {REFERENCE_DIR}/{dst_name}")
+
 
 def sync_git_proxy():
     """根据 config.py 的代理配置同步 Git 全局代理"""
@@ -518,10 +572,16 @@ def process_project(proj: dict, github: dict, index: int, total: int):
     # 6. 设置远程仓库
     setup_remote(path, remote_url)
 
-    # 7. 写入上传日志（在 commit 之前，使日志随本次代码一起提交到仓库）
-    write_upload_log(repo_name, change_desc)
+    # 7. 生成本次上传的 UTC 时间戳（日志与参考图命名共用，保证一致）
+    now_utc = datetime.now(timezone.utc)
 
-    # 8. 添加 → 提交 → 推送
+    # 8. 先重命名参考图（reference.png → <UTC>.png），再提交
+    rename_reference_image(path, now_utc)
+
+    # 9. 写入上传日志（在 commit 之前，使日志随本次代码一起提交到仓库）
+    write_upload_log(repo_name, change_desc, now_utc)
+
+    # 10. 添加 → 提交 → 推送
     result = add_commit_push(path, branch, commit_message, change_desc)
 
     if result == "pushed":

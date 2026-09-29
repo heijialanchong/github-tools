@@ -4,6 +4,42 @@
 
 ---
 
+## 2026-09-29
+
+### 上传支持"本次修改描述"
+- **文件**: `config.py`、`1_Github项目上传.py`
+- **修改**: 新增本次修改描述参数 `CONFIG["upload"]["change_description"]`（可留空）
+- **具体改动**:
+  - `add_commit_push()` 新增 `description` 参数，非空时作为 commit 标题（优先于 projects.json 的 `commit_message`）
+  - `write_upload_log()` 日志追加 `| 修改: xxx`
+  - 日志改为在 commit **之前**写入（原先在 push 成功之后），使日志随本次代码一起提交到仓库
+
+### 上传日志纳入仓库
+- **文件**: `.gitignore`
+- **修改**: 移除 `*.log`（保留 `*.cache`）
+- **效果**: `logs/<仓库名>.log` 不再被忽略，随代码一起提交到 GitHub
+
+### config.py 参数整合为 CONFIG 字典
+- **文件**: `config.py`、`1~5` 五个脚本
+- **修改**: 所有参数收拢到一个 `CONFIG` 字典（proxy / upload / download_repos）
+- **具体改动**: 5 个脚本的导入统一改为 `from config import CONFIG`，顶部解包，脚本内部逻辑不变
+
+### 新增 6_Github查看仓库.py
+- **文件**: `6_Github查看仓库.py`（新建）
+- **功能**: 查看账号下所有仓库（含私有），分页拉取 `GET /user/repos`
+- **支持**: `--sort` / `--direction` / `--type` / `--search` / `--detail`；中英文对齐表格 + 汇总统计
+
+### 上传参考图（地图类版本图库）
+- **文件**: `config.py`、`1_Github项目上传.py`
+- **修改**: 新增 `CONFIG["upload"]["reference_dir"] = "reference"`
+- **功能**: 上传前把截图放进 `<仓库>/reference/` 文件夹（可多张），上传时脚本把未命名时间戳的图依次重命名为 `<YYYY-MM-DD_HHMMSS>.png`（UTC 时间戳，多张自动加 _1/_2 序号）再提交
+- **效果**:
+  - 旧时间戳图累积不删，图库越攒越多，可对照 log 的 UTC 时间找对应版本
+  - 图名和日志共用同一个 `now_utc` 时间戳，严格一致
+  - 未放图则跳过，不报错；其他文件照旧走 `git add -A` 逻辑
+
+---
+
 ## 2026-07-17
 
 ### 上传时同步删除远程多余文件
