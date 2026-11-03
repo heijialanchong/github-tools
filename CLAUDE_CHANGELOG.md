@@ -4,7 +4,39 @@
 
 ---
 
+## 2026-11-03
+
+### 归档环境安装文件
+- **目录**: `安装环境/`
+- **移动**: 将 `environment.yml`、`requirements.txt`、`install_environment.ps1`、`安装环境.bat`、`环境安装说明.md` 统一移入 `安装环境` 文件夹
+- **修改**: 安装脚本自动将上级目录识别为项目根目录，虚拟环境和 Python 语法检查仍在项目根目录执行
+- **修改**: 更新 README 和安装说明中的入口路径
+- **原因**: 集中管理环境安装相关文件，避免与项目业务脚本混放
+
+---
+
+## 2026-11-03
+
+### 新增项目环境安装文件
+- **文件**: `environment.yml`、`requirements.txt`、`install_environment.ps1`、`安装环境.bat`、`环境安装说明.md`
+- **修改**: 新增 Conda 环境定义、pip 依赖清单、Windows 一键安装脚本和中文安装说明
+- **具体改动**:
+  - `environment.yml` 固定 Python 3.11，并安装 Git 和 pip
+  - 安装器检测到 Conda 时创建/更新 `github-tools` 环境；否则回退到项目内 `.venv`
+  - 安装完成后检查 Python 版本、Git，并对全部项目 Python 文件执行语法检查
+  - `requirements.txt` 明确记录当前项目没有第三方 Python 包
+  - 为兼容 Windows PowerShell 5.1 和旧版 pip，安装脚本与依赖清单中的运行文本使用 ASCII
+  - 批处理支持 `安装环境.bat conda` / `安装环境.bat venv` 强制选择安装方式
+- **原因**: 让其他 Windows 电脑可以按统一配置安装项目所需环境
+
+---
+
 ## 2026-09-29
+
+### 补全 github-tools 上传日志的修改描述
+- **文件**: `logs/github-tools.log`
+- **修改**: 将日志末尾两条 `| 修改: 代码更新` 记录，追加本次修改描述 `增加，生成地图，UI`，改为 `| 修改: 代码更新，增加，生成地图，UI`
+- **原因**: 这两条日志是在 `change_description` 还是"代码更新"时写入的，现按 config.py 当前的 `change_description` 补齐实际改动内容
 
 ### 上传支持"本次修改描述"
 - **文件**: `config.py`、`1_Github项目上传.py`

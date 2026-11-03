@@ -21,6 +21,10 @@ github-tools/
 
 ## 🔧 快速开始
 
+### 0. 安装运行环境
+
+Windows 用户可进入 `安装环境` 文件夹并双击 `安装环境.bat`。有 Conda 时会根据 `environment.yml` 创建 Python + Git 环境；没有 Conda 时会使用 `.venv`。更完整的说明见 `安装环境/环境安装说明.md`。
+
 ### 1. 创建 `projects.json`
 
 ```bash

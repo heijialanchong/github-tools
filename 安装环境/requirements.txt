@@ -1,0 +1,2 @@
+# github-tools currently uses only the Python standard library.
+# Keep this file for pip and future third-party dependencies.
