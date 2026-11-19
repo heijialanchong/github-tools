@@ -6,6 +6,32 @@
 
 ## 2026-11-03
 
+### 新增 Codex Windows 安装包
+- **目录**: `Codex安装包/`
+- **新增**: `ChatGPT-Codex-Windows安装程序.exe`、`安装说明.md`
+- **来源**: OpenAI 官方的 ChatGPT Windows 下载入口
+- **校验**: 保留原始 Microsoft Store Installer，数字签名验证有效
+- **说明**: 当前 Codex 桌面端通过 ChatGPT 桌面应用提供；安装包不包含账号或 Token
+
+---
+
+## 2026-11-03
+
+### 新增 Anaconda 离线 pip 安装包
+- **目录**: `安装环境/`
+- **新增**: `anaconda_pip_install.ps1`、`anaconda_pip安装.bat`、`wheels/README.txt`
+- **产物**: `github-tools-Conda环境安装包.zip`
+- **修改**: `requirements.txt`、`环境安装说明.md`、`README.md`
+- **功能**:
+  - 在已激活的 Anaconda 环境中执行 `pip install -r requirements.txt`
+  - 默认使用 `wheels` 本地目录离线安装，不访问网络
+  - 验证 Python 标准库导入和 Git 可用性
+- **说明**: 当前项目没有第三方 Python 依赖，`wheels` 暂时为空；Python 标准库随 Python 安装，Git 属于系统依赖
+
+---
+
+## 2026-11-03
+
 ### 归档环境安装文件
 - **目录**: `安装环境/`
 - **移动**: 将 `environment.yml`、`requirements.txt`、`install_environment.ps1`、`安装环境.bat`、`环境安装说明.md` 统一移入 `安装环境` 文件夹

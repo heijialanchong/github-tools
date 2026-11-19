@@ -18,7 +18,7 @@ CONFIG = {
         "repos": ["github-tools"],
         # 本次修改描述（每次上传前填上这次改了什么，可留空 ""）
         #   会写入 commit 标题，并追加到 logs/<仓库名>.log 上传日志里，一起提交到 GitHub
-        "change_description": "安装环境",
+        "change_description": "最新版本",
         # 参考图文件夹名（仓库根目录下）：
         #   上传前把截图存成 <文件夹名>/<文件夹名>.png，上传时会被重命名成
         #   <YYYY-MM-DD_HHMMSS>.png（UTC 时间戳），旧图累积不删，方便按 log 时间找版本

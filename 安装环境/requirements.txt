@@ -1,2 +1,4 @@
-# github-tools currently uses only the Python standard library.
-# Keep this file for pip and future third-party dependencies.
+# github-tools requires Python 3.8 or later.
+# It currently uses only the Python standard library.
+# Git is a system dependency and cannot be installed by pip.
+# Keep this file for Anaconda/pip installation and future dependencies.

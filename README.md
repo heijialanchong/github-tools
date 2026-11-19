@@ -23,7 +23,7 @@ github-tools/
 
 ### 0. 安装运行环境
 
-Windows 用户可进入 `安装环境` 文件夹并双击 `安装环境.bat`。有 Conda 时会根据 `environment.yml` 创建 Python + Git 环境；没有 Conda 时会使用 `.venv`。更完整的说明见 `安装环境/环境安装说明.md`。
+Windows 用户可进入 `安装环境` 文件夹并双击 `安装环境.bat`。有 Conda 时会根据 `environment.yml` 创建 Python + Git 环境；没有 Conda 时会使用 `.venv`。已有 Conda 环境也可以在激活后运行 `anaconda_pip安装.bat`，从本地 `wheels` 文件夹离线执行 pip 安装。更完整的说明见 `安装环境/环境安装说明.md`。
 
 ### 1. 创建 `projects.json`
 
